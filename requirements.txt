@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Web Framework
 Flask==3.1.2
 Werkzeug==3.1.3
@@ -23,3 +24,30 @@ webdriver-manager==4.0.2
 
 # WSGI Server for Production
 gunicorn==23.0.0
+=======
+# Web Framework
+Flask==3.1.2
+Werkzeug==3.1.3
+Jinja2==3.1.6
+
+# Database & ORM
+PyMySQL==1.1.2
+mysql-connector-python==9.5.0
+
+# Environment & Configuration
+python-dotenv==1.2.1
+
+# HTTP & Requests
+requests==2.32.5
+
+# File Processing
+openpyxl==3.1.5
+xlsxwriter==3.2.9
+
+# Web Scraping (opcional para production)
+selenium==4.38.0
+webdriver-manager==4.0.2
+
+# WSGI Server for Production
+gunicorn==23.0.0
+>>>>>>> 975ee546f4ec457c6388cc68af57d46b4a7c0524
