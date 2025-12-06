@@ -63,7 +63,7 @@ def criar_tabelas():
     try:
         with app.app_context():
             conn = MySQLConnection.get_connection()
-            cur = conn.cursor()
+            cur = conn.cursor(dictionary=True)
             schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
             with open(schema_path, 'r', encoding='utf-8') as f:
                 sql_commands = f.read().split(';')
@@ -80,7 +80,7 @@ def criar_tabelas():
 
 @app.route('/')
 def index():
-    conn = mysql.get_connection(); cur = conn.cursor()
+    conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
     try:
         cur.execute("SELECT * FROM tbl_prod")
         produtos = cur.fetchall()
@@ -95,7 +95,7 @@ def index():
 def cliente():
     cur = None
     try:
-        conn = mysql.get_connection(); cur = conn.cursor()
+        conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
         
         if request.method == 'GET':
             cur.execute("SELECT * FROM tbl_cliente")
@@ -164,7 +164,7 @@ def login():
 def cadastrar_usuario():
     cur=None
     try:
-        conn = mysql.get_connection(); cur = conn.cursor()
+        conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
         if request.method == 'GET':
             cur.execute("SELECT * FROM tbl_cadastrar_usuario")
             usuarios = cur.fetchall()
@@ -211,7 +211,7 @@ VALUES (%s, %s, %s)
 def produto(id_prod=None):
     cur = None
     try:
-        conn = mysql.get_connection(); cur = conn.cursor()
+        conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
         
         # GET: Listar produtos
         if request.method == 'GET':
@@ -455,7 +455,7 @@ def pesquisa():
         try:
             print("🔌 Tentando conectar ao MySQL...")
             conn = mysql.get_connection()
-            cur = conn.cursor()
+            cur = conn.cursor(dictionary=True)
             print("✅ Conectado ao banco!\n")
 
             # Criação da tabela
@@ -534,7 +534,7 @@ def contato():
                                     erro="Todos os campos são obrigatórios!")
             
             # Criar cursor
-            conn = mysql.get_connection(); cur = conn.cursor()
+            conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
             
             # Inserir dados
             cur.execute("""
@@ -573,7 +573,7 @@ if __name__ == '__main__':
     try:
         # Testa conexão antes de iniciar
         with app.app_context():
-            conn = mysql.get_connection(); cur = conn.cursor()
+            conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
             cur.execute("SELECT DATABASE(), VERSION()")
             db, version = cur.fetchone()
             cur.close()
@@ -591,7 +591,7 @@ from datetime import datetime
 def ger_clientes():
     if request.method == 'GET':
         try:
-            conn = mysql.get_connection(); cur = conn.cursor()
+            conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
             
             # Captura os parâmetros de data
             data_inicio = request.args.get('data_inicio')
@@ -736,7 +736,7 @@ def cliente_excel():
 def pedidos():
     cur = None
     try:
-        conn = mysql.get_connection(); cur = conn.cursor()
+        conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
         cur.execute("SELECT * FROM tbl_prod")
         produtos = cur.fetchall()
         cur.execute("SELECT * FROM tbl_cliente")
@@ -772,7 +772,7 @@ def salvar_pedido():
         if not id_cliente:
             return jsonify({"status": "erro", "mensagem": "ID do cliente obrigatório"}), 400
         
-        conn = mysql.get_connection(); cur = conn.cursor()
+        conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
         
         # Não criar tabelas aqui — já existem no banco com a estrutura correta
         # O CREATE TABLE IF NOT EXISTS pode causar erro se a tabela foi alterada manualmente
@@ -895,7 +895,7 @@ def enviar_whatsapp():
                 time.sleep(3)
                 
                 # Atualizar status do pedido no banco de dados
-                conn = mysql.get_connection(); cur = conn.cursor()
+                conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
                 cur.execute("""
                     UPDATE tbl_pedidos 
                     SET status_pedido = 'enviado_whatsapp'
@@ -917,7 +917,7 @@ def enviar_whatsapp():
                 logging.warning(f"⚠️ Erro ao enviar mensagem via Selenium: {e}")
                 # Mesmo se falhar o envio automático, registrar no banco
                 try:
-                    conn = mysql.get_connection(); cur = conn.cursor()
+                    conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
                     cur.execute("""
                         UPDATE tbl_pedidos 
                         SET status_pedido = 'pendente_whatsapp'
@@ -948,7 +948,7 @@ def enviar_whatsapp():
 def ger_pedidos():
     if request.method == 'GET':
         try:
-            conn = mysql.get_connection(); cur = conn.cursor()
+            conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
             
             # Captura os parâmetros de data
             data_inicio = request.args.get('data_inicio')
