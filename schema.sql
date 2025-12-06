@@ -64,6 +64,7 @@ CREATE TABLE u799109175_menu_prod.tbl_pedidos (
     status_pedido VARCHAR(50) DEFAULT 'pendente',
     dt_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     valor_total DECIMAL(10,2) NOT NULL,
+    numero_mesa varchar(10),
     FOREIGN KEY (id_cliente) REFERENCES tbl_cliente(id_cliente)
 );
 

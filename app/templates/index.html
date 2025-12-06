@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍔 Service Tour</title>
+    <title>🍔 Catálogo Digital</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,6 @@
 </div>
 
         </div>  
-                
         
         <div class="logo-container">
             <img src="https://cdn.neemo.com.br/uploads/settings_webdelivery/logo/15104/01logo_web_push.png" alt="Logo Service Tour">
@@ -26,9 +25,10 @@
     </header>
     <nav class="nav-tabs">
             <ul class="tabs-list">
-                <li class="tab-item"><a href="/contato">Fale Conosco</a></li>
-                <li class="tab-item" ><a href="/pesquisa" target="_blank">Pesquisa de Clima</a></li>
-                
+                <li class="tab-item"><a href="/contato">💬Fale Conosco</a></li>
+                <li class="tab-item" ><a href="/pesquisa" target="_blank">📣 Pesquisa de Clima</a></li>
+                <li class="tab-item"><a href="" onclick="compartilharPagina()">✅ Compartilhar</a></li>
+            
             </ul>   
         </nav>
 
@@ -60,10 +60,10 @@
                             <strong><h4>R$ Valor:</h4></strong><div class="product-price">R$ {{ "%.2f"|format(p.valor|float) }}</div>
 
                             <div class="tab-item">
-                                <a href="pedidos">📲 Fazer Pedido</a>
+                                <a href="pedidos">✅ Comprar</a>
                             </div>
 
-                        </div>
+                        </div>  
                     </div>
                 {% endfor %}
             {% else %}
@@ -78,5 +78,33 @@
     <footer class="footer">
         <p>&copy; 2025 Date Analytics. Todos os direitos reservados.</p>
     </footer>
+    <script>
+        async function compartilharPagina() {
+            try {
+                const url = window.location.href;
+                const title = document.title;
+                
+                if (navigator.share) {
+                    await navigator.share({
+                        title: title,
+                        text: 'Conheça a Date Analytics - Soluções inteligentes em análise de dados!',
+                        url: url
+                    });
+                    console.log('Página compartilhada com sucesso!');
+                } else {
+                    // Fallback para navegadores que não suportam Web Share API
+                    const tempInput = document.createElement('input');
+                    tempInput.value = url;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+                    alert('Link copiado para a área de transferência!');
+                }
+            } catch (error) {
+                console.error('Erro ao compartilhar:', error);
+            }
+        }
+    </script>
 </body>
 </html>

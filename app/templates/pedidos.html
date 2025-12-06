@@ -655,20 +655,26 @@
             <div class="customer-section">
                 <h3>👤 Informações do Cliente</h3>
                 <div class="customer-form-group">
-                    <label>Nome do Cliente</label>
-                    <select id="customerSelect" required onchange="loadCustomerPhone()">
-                        <option value="">Selecione o cliente</option>
+                    <label>Selecione o Cliente</label>
+                    <select id="customerSelect" name="id_cliente" required>
+                        <option value="">Selecione um cliente...</option>
                         {% for cliente in clientes %}
-                        <option value="{{ cliente['id_cliente'] }}" data-name="{{ cliente['nome_cliente'] }}" data-phone="{{ cliente['telefone'] if cliente['telefone'] else '' }}">{{ cliente['nome_cliente'] }}</option>
+                        <option value="{{ cliente['id_cliente'] }}" data-phone="{{ cliente['telefone'] }}">{{ cliente['nome_cliente'] }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                
+
                 <div class="customer-form-group">
                     <label>Telefone/WhatsApp</label>
-                    <input type="tel" id="customerPhone" placeholder="(00) 00000-0000" maxlength="15">
+                    <input type="tel" id="customerPhone" placeholder="(00) 00000-0000" maxlength="15" required>
                 </div>
+                <div class="customer-form-group">
+                <label>Nº Mesa</label>
+                <input type="number" id="tableNumber" name="numero_mesa" placeholder="Digite o número da mesa (opcional)" min="1">
             </div>
+            </div>
+
+            
 
             <h2 style="margin-top: 30px;">🛍️ Selecione seus Produtos</h2>
             
@@ -679,6 +685,11 @@
             <button class="btn-add-product" type="submit" id="btnAddProduct">
                 <span style="font-size: 20px;">+</span> Adicionar Produto
             </button>
+
+            <a class="btn-add-product" href="/cliente" id="btnAddProduct">
+                <span style="font-size: 20px;">👤</span> Cadastrar Cliente
+            </a>
+
 
             <!-- Resumo de Itens Selecionados -->
             <div class="summary-section" style="display: none;" id="summarySection">
@@ -876,20 +887,28 @@
             const customerId = customerSelect.value;
             const customerName = customerSelect.options[customerSelect.selectedIndex].text;
             
-            if (!customerId) {
+            if (!customerId || customerId === '') {
                 alert('⚠️ Por favor, selecione um cliente.');
                 customerSelect.focus();
                 return false;
             }
             
             const phone = customerPhone.value.trim();
-            if (!phone) {
+            if (!phone || phone === '') {
                 alert('⚠️ Por favor, digite um telefone válido.');
                 customerPhone.focus();
                 return false;
             }
             
-            return { id: customerId, nome: customerName, telefone: phone };
+            // Remover formatação do telefone para armazenar apenas números
+            const phoneClean = phone.replace(/\D/g, '');
+            
+            return { 
+                id: customerId, 
+                nome: customerName, 
+                telefone: phone,
+                telefoneClean: phoneClean
+            };
         }
 
         function addToCart(button) {
@@ -1064,7 +1083,8 @@
                         carrinho: carrinho,
                         id_cliente: document.getElementById('customerSelect').value,
                         nome_cliente: customerInfo.nome,
-                        telefone_cliente: customerInfo.telefone
+                        telefone_cliente: customerInfo.telefone,
+                        numero_mesa: document.getElementById('tableNumber').value || null
                     })
                 });
 
@@ -1118,8 +1138,8 @@
             const totalAmount = carrinho.reduce((sum, item) => sum + item.subtotal, 0);
             
             try {
-                // Primeiro salvar o pedido no banco de dados
-                const savePedidoResponse = await fetch('/salvar_pedido', {
+                // PASSO 1: Salvar pedido no banco de dados
+                const saveResponse = await fetch('/salvar_pedido', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1128,76 +1148,88 @@
                         carrinho: carrinho,
                         id_cliente: document.getElementById('customerSelect').value,
                         nome_cliente: customerInfo.nome,
-                        telefone_cliente: customerInfo.telefone
+                        telefone_cliente: customerInfo.telefone,
+                        numero_mesa: document.getElementById('tableNumber').value || null
                     })
                 });
 
-                const pedidoSalvo = await savePedidoResponse.json();
+                const saveResult = await saveResponse.json();
 
-                if (pedidoSalvo.status === 'sucesso') {
-                    const id_pedido = pedidoSalvo.id_pedido;
-                    
-                    // Formatando mensagem para WhatsApp
-                    let mensagem = `*NOVO PEDIDO #${id_pedido}*\n\n`;
-                    mensagem += `👤 *Cliente:* ${customerInfo.nome}\n`;
-                    mensagem += `📱 *Telefone:* ${customerInfo.telefone}\n\n`;
-                    mensagem += `*📋 Itens do Pedido:*\n`;
-                    
-                    carrinho.forEach((item, index) => {
-                        mensagem += `${index + 1}. ${item.nome}\n`;
-                        mensagem += `   └ Qtd: ${item.quantidade} x R$ ${item.valor.toFixed(2).replace('.', ',')}\n`;
-                        mensagem += `   └ Subtotal: R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n\n`;
-                    });
-                    
-                    mensagem += `*💰 TOTAL: R$ ${totalAmount.toFixed(2).replace('.', ',')}*\n\n`;
-                    mensagem += `_Pedido registrado no sistema_`;
-                    
-                    // Enviar para backend fazer o envio via Selenium
-                    const whatsappResponse = await fetch('/enviar_whatsapp', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            whatsapp_numero: WHATSAPP_LOJISTA,
-                            mensagem: mensagem,
-                            id_pedido: id_pedido
-                        })
-                    });
+                if (saveResult.status !== 'sucesso') {
+                    alert(`❌ Erro ao salvar pedido: ${saveResult.mensagem}`);
+                    return;
+                }
 
-                    const whatsappResult = await whatsappResponse.json();
+                const id_pedido = saveResult.id_pedido;
+                
+                // PASSO 2: Formatando mensagem para WhatsApp (agora com ID real do pedido)
+                let mensagem = `*NOVO PEDIDO #${id_pedido}*\n\n`;
+                mensagem += `👤 *Cliente:* ${customerInfo.nome}\n`;
+                mensagem += `📱 *Telefone:* ${customerInfo.telefone}\n`;
+                
+                // Incluindo número da mesa se informado
+                const mesaNumber = document.getElementById('tableNumber').value;
+                if (mesaNumber) {
+                    mensagem += `🪑 *Nº Mesa:* ${mesaNumber}\n`;
+                }
+                mensagem += `\n*📋 Itens do Pedido:*\n`;
+                
+                carrinho.forEach((item, index) => {
+                    mensagem += `${index + 1}. ${item.nome}\n`;
+                    mensagem += `   └ Qtd: ${item.quantidade} x R$ ${item.valor.toFixed(2).replace('.', ',')}\n`;
+                    mensagem += `   └ Subtotal: R$ ${item.subtotal.toFixed(2).replace('.', ',')}\n\n`;
+                });
+                
+                mensagem += `*💰 TOTAL: R$ ${totalAmount.toFixed(2).replace('.', ',')}*\n\n`;
+                mensagem += `_Pedido gerado via Catálogo Digital_`;
+                
+                // PASSO 3: Chamar rota para gerar link wa.me
+                const whatsappResponse = await fetch('/enviar_whatsapp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        whatsapp_numero: WHATSAPP_LOJISTA,
+                        mensagem: mensagem
+                    })
+                });
 
-                    if (whatsappResult.status === 'sucesso') {
-                        alert(`✅ Pedido #${id_pedido} Enviado via WhatsApp com Sucesso!\n\n📱 Verifique seu WhatsApp`);
-                        
-                        // Limpar carrinho
-                        carrinho = [];
-                        updateCartDisplay();
-                        
-                        // Resetar formulário
-                        document.getElementById('customerSelect').value = '';
-                        document.getElementById('customerPhone').value = '';
-                        document.getElementById('productsList').innerHTML = '';
-                        
-                        // Mostrar estado vazio
-                        const emptyState = document.createElement('div');
-                        emptyState.className = 'empty-products';
-                        emptyState.id = 'emptyProductsState';
-                        emptyState.innerHTML = `
-                            <div class="empty-products-icon">🛍️</div>
-                            <div class="empty-products-text">Nenhum produto adicionado</div>
-                            <div class="empty-products-subtext">Clique no botão abaixo para adicionar produtos</div>
-                        `;
-                        document.getElementById('productsList').appendChild(emptyState);
-                    } else {
-                        alert(`⚠️ Pedido #${id_pedido} foi salvo, mas houve erro ao enviar: ${whatsappResult.mensagem}`);
+                const whatsappResult = await whatsappResponse.json();
+
+                if (whatsappResult.status === 'sucesso') {
+                    // Abrir link wa.me em nova aba
+                    if (whatsappResult.url_whatsapp) {
+                        window.open(whatsappResult.url_whatsapp, '_blank');
                     }
+                    
+                    alert(`✅ Pedido #${id_pedido} Salvo!\n\n📱 Mensagem do WhatsApp aberta.\nEnvie a mensagem para o lojista.`);
+                    
+                    // Limpar carrinho
+                    carrinho = [];
+                    updateCartDisplay();
+                    
+                    // Resetar formulário
+                    document.getElementById('customerSelect').value = '';
+                    document.getElementById('customerPhone').value = '';
+                    document.getElementById('productsList').innerHTML = '';
+                    
+                    // Mostrar estado vazio
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'empty-products';
+                    emptyState.id = 'emptyProductsState';
+                    emptyState.innerHTML = `
+                        <div class="empty-products-icon">🛍️</div>
+                        <div class="empty-products-text">Nenhum produto adicionado</div>
+                        <div class="empty-products-subtext">Clique no botão abaixo para adicionar produtos</div>
+                    `;
+                    document.getElementById('productsList').appendChild(emptyState);
                 } else {
-                    alert(`❌ Erro ao salvar pedido: ${pedidoSalvo.mensagem}`);
+                    alert(`⚠️ Erro ao gerar link: ${whatsappResult.mensagem}`);
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                alert('❌ Erro ao processar pedido. Tente novamente.');
+                alert('❌ Erro ao processar WhatsApp. Tente novamente.');
             }
         });
 

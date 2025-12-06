@@ -761,8 +761,6 @@ def pedidos():
         if cur:
             cur.close()
 
-    return render_template('pedidos.html')
-
 
 @app.route('/salvar_pedido', methods=['POST'])
 def salvar_pedido():
@@ -777,6 +775,7 @@ def salvar_pedido():
         id_cliente = dados.get('id_cliente')
         nome_cliente = dados.get('nome_cliente')
         telefone_cliente = dados.get('telefone_cliente')
+        numero_mesa = dados.get('numero_mesa')
         
         if not carrinho:
             return jsonify({"status": "erro", "mensagem": "Carrinho vazio"}), 400
@@ -794,9 +793,9 @@ def salvar_pedido():
         
         # Inserir pedido principal
         cur.execute("""
-            INSERT INTO tbl_pedidos (id_cliente, valor_total)
-            VALUES (%s, %s)
-        """, (id_cliente, valor_total))
+            INSERT INTO tbl_pedidos (id_cliente, valor_total, numero_mesa)
+            VALUES (%s, %s, %s)
+        """, (id_cliente, valor_total, numero_mesa))
         
         id_pedido = cur.lastrowid
         logging.info(f"✅ Pedido criado: {id_pedido}")
@@ -810,9 +809,9 @@ def salvar_pedido():
             
             cur.execute("""
                 INSERT INTO tbl_detalhes_pedido 
-                (id_pedido, id_prod, id_cliente, quantidade, preco_unitario, nome_cliente, telefone, valor_total)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (id_pedido, id_prod, id_cliente, quantidade, preco_unitario, nome_cliente, telefone_cliente, valor_item))
+                (id_pedido, id_prod, id_cliente, quantidade, preco_unitario, nome_cliente, telefone, valor_total, numero_mesa)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (id_pedido, id_prod, id_cliente, quantidade, preco_unitario, nome_cliente, telefone_cliente, valor_item, numero_mesa))
         
         conn.commit()
         logging.info(f"✅ Pedido salvo: {id_pedido} com {len(carrinho)} itens")
@@ -833,11 +832,12 @@ def salvar_pedido():
         if cur:
             cur.close()
 
-#criar uma rota para enviar os pedidos via whatsapp
+# Criar uma rota para enviar os pedidos via whatsapp
 @app.route('/enviar_whatsapp', methods=['POST'])
 def enviar_whatsapp():
     """
-    Recebe dados do pedido e envia via WhatsApp usando Selenium
+    Gera link wa.me para enviar pedido via WhatsApp
+    NÃO salva pedido - apenas gera e retorna URL
     """
     try:
         dados = request.get_json()
@@ -850,7 +850,6 @@ def enviar_whatsapp():
         
         whatsapp_numero = dados.get('whatsapp_numero')
         mensagem = dados.get('mensagem')
-        id_pedido = dados.get('id_pedido')
         
         if not whatsapp_numero or not mensagem:
             return jsonify({
@@ -861,98 +860,28 @@ def enviar_whatsapp():
         # Limpar número (remover caracteres especiais)
         whatsapp_numero = ''.join(filter(str.isdigit, whatsapp_numero))
         
-        # Configurar Selenium
-        chrome_options = Options()
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
-        
-        # Inicializar driver do Selenium
-        driver = None
         try:
-            driver = webdriver.Chrome(options=chrome_options)
-            
-            # URL do WhatsApp Web com mensagem pre-formatada
+            # Criar URL do WhatsApp com mensagem pré-formatada
             url_whatsapp = f"https://wa.me/{whatsapp_numero}?text={quote(mensagem)}"
             
-            logging.info(f"📱 Abrindo WhatsApp Web: {url_whatsapp}")
-            driver.get(url_whatsapp)
+            logging.info(f"📱 Link WhatsApp gerado: {url_whatsapp[:80]}...")
             
-            # Aguardar carregamento da página
-            time.sleep(5)
-            
-            # Tentar encontrar o campo de mensagem
-            try:
-                # Esperar pelo input de mensagem aparecer
-                message_input = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true'][@data-tab='10']"))
-                )
-                
-                logging.info("✅ Campo de mensagem encontrado")
-                
-                # Esperar pelo botão de enviar
-                send_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Enviar']"))
-                )
-                
-                # Clicar no botão de enviar
-                send_button.click()
-                logging.info(f"✅ Mensagem enviada para {whatsapp_numero}")
-                
-                # Aguardar um pouco para garantir o envio
-                time.sleep(3)
-                
-                # Atualizar status do pedido no banco de dados
-                conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
-                cur.execute("""
-                    UPDATE tbl_pedidos 
-                    SET status_pedido = 'enviado_whatsapp'
-                    WHERE id_pedido = %s
-                """, (id_pedido,))
-                conn.commit()
-                cur.close()
-                
-                logging.info(f"✅ Pedido {id_pedido} marcado como enviado via WhatsApp")
-                
-                return jsonify({
-                    "status": "sucesso",
-                    "mensagem": f"Pedido #{id_pedido} enviado via WhatsApp com sucesso!",
-                    "id_pedido": id_pedido,
-                    "numero_whatsapp": whatsapp_numero
-                }), 200
-                
-            except Exception as e:
-                logging.warning(f"⚠️ Erro ao enviar mensagem via Selenium: {e}")
-                # Mesmo se falhar o envio automático, registrar no banco
-                try:
-                    conn = mysql.get_connection(); cur = conn.cursor(dictionary=True)
-                    cur.execute("""
-                        UPDATE tbl_pedidos 
-                        SET status_pedido = 'pendente_whatsapp'
-                        WHERE id_pedido = %s
-                    """, (id_pedido,))
-                    conn.commit()
-                    cur.close()
-                except:
-                    pass
-                
-                raise Exception(f"Erro ao enviar mensagem: {str(e)}")
+            return jsonify({
+                "status": "sucesso",
+                "mensagem": f"Link WhatsApp gerado com sucesso!",
+                "numero_whatsapp": whatsapp_numero,
+                "url_whatsapp": url_whatsapp
+            }), 200
         
-        finally:
-            # Fechar o navegador
-            if driver:
-                driver.quit()
-                logging.info("🔒 Navegador fechado")
+        except Exception as e:
+            logging.error(f"❌ Erro ao processar WhatsApp: {e}")
+            raise
     
     except Exception as e:
         logging.error(f"❌ Erro ao enviar WhatsApp: {e}")
         return jsonify({
             "status": "erro",
-            "mensagem": f"Erro ao enviar pedido via WhatsApp: {str(e)}"
+            "mensagem": f"Erro ao processar pedido para WhatsApp: {str(e)}"
         }), 500
 
 

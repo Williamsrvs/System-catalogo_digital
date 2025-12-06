@@ -4,10 +4,9 @@ Werkzeug==2.3.7
 Jinja2==3.1.2
 MarkupSafe==2.1.1
 
-# Database
+# Database (CORREÇÃO: versão estável do mysql-connector)
 PyMySQL==1.1.2
-mysql-connector-python==9.5.0
-mysqlclient==2.2.0
+mysql-connector-python==8.2.0
 
 # Environment Configuration
 python-dotenv==1.2.1
