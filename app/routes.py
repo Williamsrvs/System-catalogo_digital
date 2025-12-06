@@ -50,9 +50,8 @@ class MySQLConnection:
             port=db_config['port']
         )
 
-# Variável placeholder para compatibilidade
-class mysql:
-    pass
+# Alias para compatibilidade
+mysql = MySQLConnection
 
 # Log ao iniciar
 logging.info("🚀 Aplicação iniciando...")
