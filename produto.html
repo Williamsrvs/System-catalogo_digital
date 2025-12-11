@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produtos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/produto.css') }}">
+    <meta name="robots" content="noindex,nofollow">
+</head>
+<body>
+
+    <!-- Botão Mobile Menu -->
+    <button class="menu_toggle" onclick="toggleMenu()">☰</button>
+
+    <!-- Sidebar lateral -->
+    <nav class="sidebar_menu" id="sidebar">
+        <div class="sidebar_header">
+            <h2>Menu Navegação</h2>
+        </div>
+
+        <div class="menu_list">
+            <button id="toggleFormBtn" class="btn" >➕ Adicionar produto</button>
+            <button id="homeBtn" onclick="window.location.href='/produto_excel'" class="btn">⏬ Lista Produtos</button>
+            <button id="logoutBtn" onclick="window.location.href='/lojista'" class="btn">❌ Sair</button>
+        </div>
+        <footer class="sidebar_footer">
+            <p>&copy; 2025 Todos os direitos reservados, Date Analytics</p>
+        </footer>
+    </nav>
+<div class="container">
+    <div class="header">
+        
+    </div>
+
+    <div class="layout">
+    <!-- Formulário lateral -->
+    <aside class="form-card" id="productForm" aria-labelledby="form-title">
+        <h2 id="form-title">Adicionar produto</h2>
+        <form action="/produto" method="POST" enctype="multipart/form-data">
+        <div class="form-row">
+            <div class="col">
+            <label for="nome_prod">Nome</label>
+            <input id="nome_prod" type="text" name="nome_prod" placeholder="Nome do produto" required>
+            </div>
+        </div>
+
+        <div style="margin-top:10px">
+            <label for="descricao">Descrição</label>
+            <textarea id="descricao" name="descricao" placeholder="Descrição" required></textarea>
+        </div>
+
+        <div style="margin-top:10px">
+    <label for="subgrupo">Subgrupo</label>
+    <select id="subgrupo" name="subgrupo" required class="form-control">
+    <option value="">Selecione um subgrupo</option>
+    <option value="Prato da Casa">Prato da Casa (*)</option>
+    <option value="Sanduiche">Sanduíche</option>
+    <option value="Sanduiche Natural">Sanduíche Natural</option>
+    <option value="Sanduiche Fitness">Sanduíche Fitness</option>
+    <option value="Hot Dog">Hot Dog</option>
+    <option value="Hamburguer">Hamburguer</option>
+    <option value="Churrasco Grego">Churrasco Grego</option>
+    <option value="Lasanha">Lasanha</option>
+    <option value="Pastel">Patel</option>
+    <option value="Salgados">Salgados</option>
+    <option value="Tortas">Tortas</option>
+    <option value="Hamburguer Natural">Hamburguer Natural</option>
+    <option value="Pizza Pequena">Pizza Pequena</option>
+    <option value="Pizza Média">Pizza Média</option>
+    <option value="Pizza Grande">Pizza Grande</option>
+    <option value="Macarronada">Macarronada</option>
+    <option value="Tapioca">Tapioca</option>
+    <option value="Bebidas">Bebidas</option>
+    <option value="Sobremesa">Sobremesa</option>
+    </select>
+    </div>
+
+    <div style="margin-top:10px">
+    <label for="status_promocao">Status Promoção</label>
+    <select id="status_promocao" name="status_promocao" required class="form-control">
+    <option value="">Selecione um Status</option>
+    <option value="Promoção da casa">Promoção da casa</option>
+    <option value="Black Friday">Black Friday</option>
+    <option value="Sem promoção">Sem promoção</option>
+    </select>
+    </div>
+
+
+        <div class="form-row" style="margin-top:10px">
+            <div class="col">
+            <label for="valor">Valor (R$)</label>
+            <input id="valor" type="number" step="0.01" name="valor" placeholder="0.00" required>
+            </div>
+            <div class="col">
+            <label for="form_pgmto">Forma de pagamento</label>
+            <input id="form_pgmto" type="text" name="form_pgmto" placeholder="Cartão / Pix / Dinheiro" required>
+            </div>
+        </div>
+
+        <div style="margin-top:10px">
+            <label for="imagem_url">Imagem</label>
+            <input id="imagem_url" type="file" name="imagem_url" accept="image/*">
+        </div>
+
+        <button class="btn-submit" type="submit">Salvar produto</button>
+        </form>
+    </aside>
+
+    <!-- Lista de produtos -->
+    <section class="products" aria-live="polite">
+        {% if produtos is defined and produtos %}
+        {% for p in produtos %}
+            <article class="product-card">
+            {% if p.imagem_url %}
+                <img src="data:image/jpeg;base64,{{ p.imagem_url|b64encode }}" alt="{{ p.nome_prod }}">
+            {% else %}
+                <div class="placeholder">Sem imagem</div>
+            {% endif %}
+            <div class="product-info">
+                <h3>{{ p.nome_prod }}</h3>
+                <p class="desc">{{ p.descricao }}</p>
+                <p class="subgrupo"><strong>Grupo:</strong> {{ p.subgrupo }}</p>
+                <p class="promocao"><strong>Promoção do Dia:</strong> <span>{{ p.status_promocao }}</span></p>
+                <div class="meta">
+                <span class="price">R$ {{ "%.2f"|format(p.valor|float) }}</span>
+                <span class="pay">{{ p.form_pgmto }}</span>
+                </div>
+                <div class="actions">
+                <button onclick="editarProduto({{ p.id_prod }})" class="btn-action edit">Editar</button>
+                <button onclick="if(confirm('Tem certeza que deseja excluir este produto?')) deletarProduto({{ p.id_prod }})" class="btn-action delete">Excluir</button>
+                </div>
+            </div>
+
+            <!-- Modal de edição -->
+            <div id="editModal{{ p.id_prod }}" class="modal">
+                <div class="modal-content">
+                <h3>Editar Produto</h3>
+                <form id="editForm{{ p.id_prod }}" onsubmit="atualizarProduto(event, {{ p.id_prod }}); return false;">
+                    <div class="form-row">
+                    <div class="col">
+                        <label for="edit_nome{{ p.id_prod }}">Nome:</label>
+                        <input type="text" id="edit_nome{{ p.id_prod }}" name="nome_prod" value="{{ p.nome_prod }}" required>
+                    </div>
+                    </div>
+                    <div class="form-row">
+                    <div class="col">
+                        <label for="edit_desc{{ p.id_prod }}">Descrição:</label>
+                        <textarea id="edit_desc{{ p.id_prod }}" name="descricao" required>{{ p.descricao }}</textarea>
+                    </div>
+                    </div>
+
+                    <div class="form-row">
+        <div class="col">
+            <label for="edit_subgrupo{{ p.id_prod }}">Subgrupo:</label>
+            <select id="edit_subgrupo{{ p.id_prod }}" name="subgrupo" required class="form-control">
+            <option value="">Selecione um subgrupo</option>
+            <option value="Prato da Casa" {% if p.subgrupo == 'Prato da Casa' %}selected{% endif %}>Prato da Casa (*)</option>
+            <option value="Hot Dog" {% if p.subgrupo == 'Hot Dog' %}selected{% endif %}>Hot Dog</option>
+            <option value="Churrasco Grego" {% if p.subgrupo == 'Churrasco Grego' %}selected{% endif %}>Churrasco Grego</option>
+            <option value="Lasanha" {% if p.subgrupo == 'Lasanha' %}selected{% endif %}>Lasanha</option>
+            <option value="Hamburguer" {% if p.subgrupo == 'Hamburguer' %}selected{% endif %}>Hamburguer</option>
+            <option value="Sanduiche Fitness" {% if p.subgrupo == 'Sanduiche Fitness' %}selected{% endif %}>Sanduíche Fitness</option><option value="Hamburguer Natural" {% if p.subgrupo == 'Hamburguer Natural' %}selected{% endif %}>Hamburguer Natural</option>
+            <option value="Sanduiche" {% if p.subgrupo == 'Sanduiche' %}selected{% endif %}>Sanduíche</option>
+            <option value="Hamburguer Natural" {% if p.subgrupo == 'Hamburguer Natural' %}selected{% endif %}>Hamburguer Natural</option>
+            <option value="Pastel" {% if p.subgrupo == 'Pastel' %}selected{% endif %}>Pastel</option>
+            <option value="Salgados" {% if p.subgrupo == 'Salgados' %}selected{% endif %}>Salgados</option>
+            <option value="Tortas" {% if p.subgrupo == 'Tortas' %}selected{% endif %}>Tortas</option>
+            <option value="Sanduiche Natural" {% if p.subgrupo == 'Sanduiche Natural' %}selected{% endif %}>Sanduíche Natural</option>
+            <option value="Pizza Pequena" {% if p.subgrupo == 'Pizza Pequena' %}selected{% endif %}>Pizza Pequena</option>
+            <option value="Pizza Média" {% if p.subgrupo == 'Pizza Média' %}selected{% endif %}>Pizza Média</option>
+            <option value="Pizza Grande" {% if p.subgrupo == 'Pizza Grande' %}selected{% endif %}>Pizza Grande</option>
+            <option value="Macarronada" {% if p.subgrupo == 'Macarronada' %}selected{% endif %}>Macarronada</option>
+            <option value="Tapioca" {% if p.subgrupo == 'Tapioca' %}selected{% endif %}>Tapioca</option>
+            <option value="Bebidas" {% if p.subgrupo == 'Bebidas' %}selected{% endif %}>Bebidas</option>
+            <option value="Sobremesa" {% if p.subgrupo == 'Sobremesa' %}selected{% endif %}>Sobremesa</option>
+        </select>
+        </div>
+        </div>
+        
+                    <div class="form-row">
+        <div class="col">
+            <label for="edit_status_promocao{{ p.id_prod }}">Status Promoção:</label>
+            <select id="edit_status_promocao{{ p.id_prod }}" name="status_promocao" required class="form-control">
+            <option value="">Selecione um Status</option>
+            <option value="Promoção da casa" {% if p.status_promocao == 'Promoção da casa' %}selected{% endif %}>Promoção da casa</option>
+            <option value="Black Friday" {% if p.status_promocao == 'Black Friday' %}selected{% endif %}>Black Friday</option>
+            <option value="Sem promoção" {% if p.status_promocao == 'Sem promoção' %}selected{% endif %}>Sem promoção</option>
+        </select>
+        </div>
+                    </div>
+
+                    <div class="form-row">
+        <div class="col">
+        <label for="edit_valor{{ p.id_prod }}">Valor:</label>
+        <input type="number" step="0.01" id="edit_valor{{ p.id_prod }}" name="valor" value="{{ p.valor }}" required>
+                    </div>
+                    <div class="col">
+                        <label for="edit_pgto{{ p.id_prod }}">Forma de Pagamento:</label>
+                        <input type="text" id="edit_pgto{{ p.id_prod }}" name="form_pgmto" value="{{ p.form_pgmto }}" required>
+                    </div>
+                    </div>
+                    <div class="form-row">
+                    <div class="col">
+                        <label for="edit_img{{ p.id_prod }}">Nova Imagem:</label>
+                        <input type="file" id="edit_img{{ p.id_prod }}" name="imagem_url" accept="image/*">
+                    </div>
+                    </div>
+                    <div class="modal-buttons">
+                    <button type="submit" class="btn-submit">Salvar</button>
+                    <button type="button" onclick="fecharModal({{ p.id_prod }})" class="btn-cancel">Cancelar</button>
+                    </div>
+                </form>
+                </div>
+            </div>
+            </article>
+        {% endfor %}
+        {% else %}
+        <p class="empty">Nenhum produto cadastrado.</p>
+        {% endif %}
+    </section>
+
+    </div>
+</div>
+
+<script>
+    // Toggle simples para mostrar/ocultar o formulário em telas pequenas
+    (function(){
+    const btn = document.getElementById('toggleFormBtn');
+    const form = document.getElementById('productForm');
+    if(!btn || !form) return;
+    btn.addEventListener('click', ()=>{
+        const isHidden = form.style.display === 'none' || getComputedStyle(form).display === 'none';
+        form.style.display = isHidden ? 'block' : 'none';
+        btn.textContent = isHidden ? 'Fechar' : 'Adicionar produto';
+    });
+    // Em telas pequenas, começar com formulário oculto
+    if(window.innerWidth <= 960){ form.style.display = 'none'; }
+    })();
+
+    // Funções para edição e exclusão de produtos
+    function editarProduto(id) {
+    const modal = document.getElementById(`editModal${id}`);
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+    }
+
+    function fecharModal(id) {
+    const modal = document.getElementById(`editModal${id}`);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    }
+
+    function atualizarProduto(event, id) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    fetch(`/produto/${id}`, {
+        method: 'PUT',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+        alert('Produto atualizado com sucesso!');
+        window.location.reload();
+        } else {
+        return response.text().then(text => {
+            console.error('Erro do servidor:', text);
+            alert('Erro ao atualizar produto');
+        });
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao atualizar produto: ' + error.message);
+    });
+    }
+
+    function deletarProduto(id) {
+    fetch(`/produto/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => {
+        if (response.ok) {
+        alert('Produto excluído com sucesso!');
+        window.location.reload();
+        } else {
+        alert('Erro ao excluir produto');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao excluir produto');
+    });
+    }
+</script>
+
+
+
+</body>
+</html>
