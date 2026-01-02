@@ -24,15 +24,6 @@
         </div>
     </header>
 
-        <div class="select-box">
-        <label for="grupo-select">Filtrar por Grupo:</label>
-        <select id="grupo-select" onchange="location = this.value;">
-            <option value="/">Todos os Grupos</option>
-            {% for subgrupo in subgrupos %}
-                <option value="/subgrupo/{{ subgrupo.subgrupo }}" {% if subgrupo_selecionado == subgrupo.subgrupo %}selected{% endif %}>{{ subgrupo.subgrupo }}</option>
-            {% endfor %}
-        </select>
-        </div>
     
     <nav class="nav-tabs">
             <ul class="tabs-list">
